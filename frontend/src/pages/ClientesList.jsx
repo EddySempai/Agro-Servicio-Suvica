@@ -109,19 +109,19 @@ export default function ClientesList() {
 
   const exportToCSV = () => {
     if (filteredClientes.length === 0) return;
-    const headers = ['RIF', 'Razon Social', 'Telefono', 'Domicilio Fiscal', 'Estado'];
+    const headers = ['RIF', 'Razón Social', 'Teléfono', 'Domicilio Fiscal', 'Estado'];
     const csvContent = [
-      headers.join(','),
+      headers.join(';'),
       ...filteredClientes.map(c => [
-        `"${c.rif}"`,
-        `"${c.razon_social}"`,
-        `"${c.telefono_cliente || ''}"`,
-        `"${c.domicilio_fiscal}"`,
+        `"${String(c.rif || '').replace(/"/g, '""')}"`,
+        `"${String(c.razon_social || '').replace(/"/g, '""')}"`,
+        `"${String(c.telefono_cliente || '').replace(/"/g, '""')}"`,
+        `"${String(c.domicilio_fiscal || '').replace(/"/g, '""')}"`,
         `"${c.estado_cliente ? 'Activo' : 'Inactivo'}"`
-      ].join(','))
-    ].join('\n');
+      ].join(';'))
+    ].join('\r\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);

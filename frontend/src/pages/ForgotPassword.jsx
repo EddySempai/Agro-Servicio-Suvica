@@ -8,8 +8,7 @@ import './Login.css';
 export default function ForgotPassword() {
   const [step, setStep] = useState(1);
   const [usuario, setUsuario] = useState('');
-  const [pregunta, setPregunta] = useState('');
-  const [respuesta, setRespuesta] = useState('');
+  const [codigo, setCodigo] = useState('');
   const [nuevaClave, setNuevaClave] = useState('');
   
   const [error, setError] = useState('');
@@ -23,7 +22,8 @@ export default function ForgotPassword() {
     setLoading(true);
     try {
       const res = await axios.post('http://localhost:3001/api/auth/forgot-password', { usuario });
-      setPregunta(res.data.pregunta);
+      setSuccess(res.data.message); // Temporarily show success
+      setTimeout(() => setSuccess(''), 3000);
       setStep(2);
     } catch (err) {
       setError(err.response?.data?.error || 'Usuario no encontrado');
@@ -42,7 +42,7 @@ export default function ForgotPassword() {
     setLoading(true);
     try {
       const res = await axios.post('http://localhost:3001/api/auth/reset-password', {
-        usuario, respuesta, nuevaClave
+        usuario, codigo, nuevaClave
       });
       setSuccess(res.data.message);
       setTimeout(() => navigate('/login'), 3000);
@@ -54,80 +54,81 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="login-container">
-      <div className="login-card animate-fade-in" style={{ padding: '40px', maxWidth: '400px', width: '100%' }}>
-        <div className="login-header">
-          <img src={logoImg} alt="Logo" className="login-logo" style={{ height: '80px', marginBottom: '16px' }} />
-          <h2>Recuperar Contraseña</h2>
-          <p style={{ color: 'var(--text-secondary)' }}>
-            Siga los pasos para restablecer su acceso
-          </p>
-        </div>
+    <div className="login-page-wrapper">
+      <div className="login-image-side"></div>
+      <div className="login-form-side">
+        <div className="login-form-container">
+          <div className="login-header-brand" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+            <img src={logoImg} alt="Agro-Servicios Logo" style={{ width: '150px', borderRadius: '12px' }} />
+            <h2 style={{ fontSize: '24px', marginTop: '10px' }}>AGRO-SERVICIOS</h2>
+          </div>
+          <p className="login-subtitle">Recuperar Contraseña</p>
 
-        {error && <div className="error-message">{error}</div>}
-        {success && <div className="success-message" style={{ background: '#dcfce7', color: '#166534', padding: '12px', borderRadius: '4px', marginBottom: '16px' }}>{success}</div>}
+          <div className="login-form-box">
+            {error && <div style={{ color: 'red', marginBottom: '16px', fontSize: '14px', textAlign: 'center' }}>{error}</div>}
+            {success && <div style={{ background: '#dcfce7', color: '#166534', padding: '12px', borderRadius: '4px', marginBottom: '16px', fontSize: '14px', textAlign: 'center' }}>{success}</div>}
 
-        {step === 1 && !success && (
-          <form onSubmit={handleGetQuestion} className="login-form">
-            <div className="form-group">
-              <label>Usuario</label>
-              <input 
-                type="text" 
-                className="input-base" 
-                placeholder="Ingrese su nombre de usuario"
-                value={usuario}
-                onChange={(e) => setUsuario(e.target.value)}
-                required
-              />
-            </div>
-            <button type="submit" className="btn-primary" disabled={loading}>
-              <Key size={18} />
-              {loading ? 'Buscando...' : 'Buscar Usuario'}
-            </button>
-          </form>
-        )}
+            {step === 1 && !success && (
+              <form onSubmit={handleGetQuestion}>
+                <div className="form-group">
+                  <div className="form-group-header">
+                    <label>Usuario</label>
+                  </div>
+                  <input 
+                    type="text" 
+                    className="input-base" 
+                    placeholder="Ingrese su nombre de usuario"
+                    value={usuario}
+                    onChange={(e) => setUsuario(e.target.value)}
+                    required
+                  />
+                </div>
+                <button type="submit" className="btn-primary" disabled={loading}>
+                  {loading ? 'Buscando...' : 'Buscar Usuario'} <ArrowLeft style={{ transform: 'rotate(180deg)' }} size={18} />
+                </button>
+              </form>
+            )}
 
-        {step === 2 && !success && (
-          <form onSubmit={handleResetPassword} className="login-form">
-            <div className="form-group">
-              <label>Pregunta de Seguridad</label>
-              <div style={{ padding: '12px', background: 'var(--bg-primary)', borderRadius: '4px', fontWeight: '500' }}>
-                {pregunta}
-              </div>
-            </div>
-            <div className="form-group">
-              <label>Respuesta</label>
-              <input 
-                type="text" 
-                className="input-base" 
-                placeholder="Su respuesta secreta"
-                value={respuesta}
-                onChange={(e) => setRespuesta(e.target.value)}
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label>Nueva Contraseña</label>
-              <input 
-                type="password" 
-                className="input-base" 
-                placeholder="Mínimo 8 caracteres"
-                value={nuevaClave}
-                onChange={(e) => setNuevaClave(e.target.value)}
-                required
-              />
-            </div>
-            <button type="submit" className="btn-primary" disabled={loading}>
-              <Key size={18} />
-              {loading ? 'Restableciendo...' : 'Restablecer Contraseña'}
-            </button>
-          </form>
-        )}
+            {step === 2 && !success && (
+              <form onSubmit={handleResetPassword}>
+                <div className="form-group">
+                  <div className="form-group-header">
+                    <label>Código de Recuperación</label>
+                  </div>
+                  <input 
+                    type="text" 
+                    className="input-base" 
+                    placeholder="Ej. AGRO123"
+                    value={codigo}
+                    onChange={(e) => setCodigo(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <div className="form-group-header">
+                    <label>Nueva Contraseña</label>
+                  </div>
+                  <input 
+                    type="password" 
+                    className="input-base" 
+                    placeholder="Mínimo 8 caracteres"
+                    value={nuevaClave}
+                    onChange={(e) => setNuevaClave(e.target.value)}
+                    required
+                  />
+                </div>
+                <button type="submit" className="btn-primary" disabled={loading}>
+                  {loading ? 'Restableciendo...' : 'Restablecer Contraseña'} <Key size={18} />
+                </button>
+              </form>
+            )}
 
-        <div className="login-footer" style={{ marginTop: '24px' }}>
-          <Link to="/login" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-            <ArrowLeft size={16} /> Volver al Inicio de Sesión
-          </Link>
+            <div className="login-footer" style={{ marginTop: '24px', textAlign: 'center' }}>
+              <Link to="/login" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', color: 'var(--primary-color)', textDecoration: 'none' }}>
+                <ArrowLeft size={16} /> Volver al Inicio de Sesión
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </div>

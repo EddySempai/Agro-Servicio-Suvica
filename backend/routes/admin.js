@@ -1,20 +1,18 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { exec } = require('child_process');
-const mysqldump = require('mysqldump');
 const path = require('path');
 const fs = require('fs');
 
 const getPeriodCondition = (period, dateColumn) => {
   if (!period || period === 'all') return '1=1';
   switch (period) {
-    case '24h': return `${dateColumn} >= DATE_SUB(NOW(), INTERVAL 1 DAY)`;
-    case '7d': return `${dateColumn} >= DATE_SUB(NOW(), INTERVAL 7 DAY)`;
-    case '1m': return `${dateColumn} >= DATE_SUB(NOW(), INTERVAL 1 MONTH)`;
-    case '3m': return `${dateColumn} >= DATE_SUB(NOW(), INTERVAL 3 MONTH)`;
-    case '6m': return `${dateColumn} >= DATE_SUB(NOW(), INTERVAL 6 MONTH)`;
-    case '1y': return `${dateColumn} >= DATE_SUB(NOW(), INTERVAL 1 YEAR)`;
+    case '24h': return `${dateColumn} >= datetime('now', '-1 day')`;
+    case '7d': return `${dateColumn} >= datetime('now', '-7 days')`;
+    case '1m': return `${dateColumn} >= datetime('now', '-1 month')`;
+    case '3m': return `${dateColumn} >= datetime('now', '-3 months')`;
+    case '6m': return `${dateColumn} >= datetime('now', '-6 months')`;
+    case '1y': return `${dateColumn} >= datetime('now', '-1 year')`;
     default: return '1=1';
   }
 };
@@ -105,35 +103,14 @@ router.get('/rentabilidad', async (req, res) => {
 
 // 2. Respaldo (Backup) de Base de Datos
 router.get('/backup', async (req, res) => {
-  const dbName = process.env.DB_NAME || 'agro_servicios';
-  const dbUser = process.env.DB_USER || 'root';
-  const dbPass = process.env.DB_PASSWORD || '';
-  const dbHost = process.env.DB_HOST || 'localhost';
-
+  const backupPath = path.join(__dirname, '..', 'database.sqlite');
   const date = new Date().toISOString().slice(0, 10);
-  const backupFileName = `${dbName}-backup-${date}.sql`;
-  const backupPath = path.join(__dirname, '..', backupFileName);
-
-  try {
-    await mysqldump({
-      connection: {
-        host: dbHost,
-        user: dbUser,
-        password: dbPass,
-        database: dbName,
-      },
-      dumpToFile: backupPath,
-    });
-    
-    res.download(backupPath, backupFileName, (err) => {
-      if (err) console.error('Error enviando archivo de backup:', err);
-      fs.unlink(backupPath, (unlinkErr) => {
-        if (unlinkErr) console.error('Error eliminando backup temporal:', unlinkErr);
-      });
-    });
-  } catch (error) {
-    console.error('Error generando backup:', error);
-    res.status(500).json({ error: 'Fallo al generar el respaldo de la base de datos.' });
+  const backupFileName = `agro_servicios-backup-${date}.sqlite`;
+  
+  if (fs.existsSync(backupPath)) {
+    res.download(backupPath, backupFileName);
+  } else {
+    res.status(404).json({ error: 'Archivo de base de datos no encontrado' });
   }
 });
 

@@ -131,22 +131,84 @@ a:hover {
 }
 
 /* Print Styles */
-@media print {
-  body {
-    background: white;
-    color: black;
-  }
-  .no-print {
+@media screen {
+  .print-only {
     display: none !important;
   }
+}
+
+@media print {
+  /* Ocultar elementos interactivos y de navegación */
+  .no-print,
+  .sidebar,
+  .topbar,
+  .modal-overlay,
+  .btn-primary,
+  .btn-secondary,
+  .btn-icon,
+  .pagination,
+  nav,
+  header,
+  footer {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    opacity: 0 !important;
+    visibility: hidden !important;
+  }
+
+  /* Resetear página para impresión limpia */
+  html, body {
+    background: #ffffff !important;
+    color: #111827 !important;
+    font-family: Arial, Helvetica, sans-serif !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Desbloquear contenedores de la app */
+  .layout-container,
+  .main-content,
+  .content-area {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+  }
+
+  .glass-panel {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+  }
+
+  /* Formato del documento oficial impreso */
   .print-only {
     display: block !important;
+    visibility: visible !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    padding: 10mm 15mm !important;
+    background: #ffffff !important;
+    color: #111827 !important;
+    box-sizing: border-box !important;
   }
-  .glass-panel {
-    border: none;
-    box-shadow: none;
+
+  @page {
+    size: letter portrait;
+    margin: 10mm 15mm;
   }
-}
-.print-only {
-  display: none;
 }

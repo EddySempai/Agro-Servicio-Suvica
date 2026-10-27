@@ -1,0 +1,32 @@
+{
+  "name": "agro-servicios",
+  "version": "1.0.0",
+  "description": "Agro Servicios App",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build:frontend": "cd frontend && npm install && npm run build",
+    "build:backend": "cd backend && npm install",
+    "build": "npm run build:frontend && npm run build:backend && electron-builder",
+    "dev": "electron ."
+  },
+  "build": {
+    "appId": "com.agroservicios.app",
+    "productName": "AgroServicios",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "backend/**/*",
+      "frontend/dist/**/*"
+    ],
+    "win": {
+      "target": "nsis"
+    }
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3"
+  }
+}

@@ -2,9 +2,12 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
 // Secret for JWT
 const JWT_SECRET = 'agro_servicios_secret_key_123';
+
+const md5 = (text) => crypto.createHash('md5').update(text.toString()).digest('hex');
 
 // Auth Route
 router.post('/login', async (req, res) => {
@@ -15,7 +18,8 @@ router.post('/login', async (req, res) => {
   }
 
   try {
-    const [rows] = await db.query('SELECT * FROM seguridad WHERE usuario = ? AND clave = MD5(?)', [usuario, clave]);
+    const hashedClave = md5(clave);
+    const [rows] = await db.query('SELECT * FROM seguridad WHERE usuario = ? AND clave = ?', [usuario, hashedClave]);
     
     if (rows.length > 0) {
       const user = rows[0];
@@ -74,9 +78,10 @@ router.post('/register', async (req, res) => {
     }
     
     // Privilegio por defecto 'U' (Usuario)
+    const hashedClave = md5(clave);
     await db.query(
-      'INSERT INTO seguridad (usuario, clave, email, pregunta, respuesta, privilegio) VALUES (?, MD5(?), ?, ?, ?, ?)',
-      [usuario, clave, email, pregunta || '', respuesta || '', 'U']
+      'INSERT INTO seguridad (usuario, clave, email, pregunta, respuesta, privilegio) VALUES (?, ?, ?, ?, ?, ?)',
+      [usuario, hashedClave, email, pregunta || '', respuesta || '', 'U']
     );
     res.status(201).json({ message: 'Usuario registrado exitosamente. Ahora puede iniciar sesión.' });
   } catch (error) {
@@ -87,13 +92,13 @@ router.post('/register', async (req, res) => {
 
 const { verifyToken } = require('../middleware/auth');
 
-// Obtener pregunta secreta
+// Obtener pregunta secreta (Ya no se usa la pregunta, solo verificamos que el usuario exista)
 router.post('/forgot-password', async (req, res) => {
   const { usuario } = req.body;
   try {
-    const [rows] = await db.query('SELECT pregunta FROM seguridad WHERE usuario = ?', [usuario]);
+    const [rows] = await db.query('SELECT id FROM seguridad WHERE usuario = ?', [usuario]);
     if (rows.length > 0) {
-      res.json({ pregunta: rows[0].pregunta || '¿Cuál es su color favorito?' });
+      res.json({ message: 'Usuario encontrado. Proceda a ingresar su código de recuperación.' });
     } else {
       res.status(404).json({ error: 'Usuario no encontrado' });
     }
@@ -102,19 +107,23 @@ router.post('/forgot-password', async (req, res) => {
   }
 });
 
-// Restablecer clave con respuesta secreta
+// Restablecer clave con codigo_recuperacion
 router.post('/reset-password', async (req, res) => {
-  const { usuario, respuesta, nuevaClave } = req.body;
+  const { usuario, codigo, nuevaClave } = req.body;
   if (!nuevaClave || nuevaClave.length < 8) {
     return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 8 caracteres' });
   }
+  if (!codigo) {
+    return res.status(400).json({ error: 'El código de recuperación es requerido' });
+  }
   try {
-    const [rows] = await db.query('SELECT * FROM seguridad WHERE usuario = ? AND respuesta = ?', [usuario, respuesta]);
+    const [rows] = await db.query('SELECT * FROM seguridad WHERE usuario = ? AND codigo_recuperacion = ?', [usuario, codigo]);
     if (rows.length > 0) {
-      await db.query('UPDATE seguridad SET clave = MD5(?) WHERE usuario = ?', [nuevaClave, usuario]);
+      const hashedNuevaClave = md5(nuevaClave);
+      await db.query('UPDATE seguridad SET clave = ? WHERE usuario = ?', [hashedNuevaClave, usuario]);
       res.json({ message: 'Contraseña restablecida exitosamente' });
     } else {
-      res.status(401).json({ error: 'La respuesta de seguridad es incorrecta' });
+      res.status(401).json({ error: 'El código de recuperación es incorrecto' });
     }
   } catch (error) {
     res.status(500).json({ error: 'Error interno del servidor' });
@@ -129,9 +138,11 @@ router.post('/change-password', verifyToken, async (req, res) => {
     return res.status(400).json({ error: 'La nueva contraseña debe tener al menos 8 caracteres' });
   }
   try {
-    const [rows] = await db.query('SELECT * FROM seguridad WHERE id = ? AND clave = MD5(?)', [userId, actualClave]);
+    const hashedActual = md5(actualClave);
+    const [rows] = await db.query('SELECT * FROM seguridad WHERE id = ? AND clave = ?', [userId, hashedActual]);
     if (rows.length > 0) {
-      await db.query('UPDATE seguridad SET clave = MD5(?) WHERE id = ?', [nuevaClave, userId]);
+      const hashedNueva = md5(nuevaClave);
+      await db.query('UPDATE seguridad SET clave = ? WHERE id = ?', [hashedNueva, userId]);
       res.json({ message: 'Contraseña actualizada exitosamente' });
     } else {
       res.status(401).json({ error: 'La contraseña actual es incorrecta' });

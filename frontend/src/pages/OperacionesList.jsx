@@ -17,6 +17,11 @@ export default function OperacionesList() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [reportData, setReportData] = useState(null);
   
+  // Fast Client Creation State
+  const [isClientModalOpen, setIsClientModalOpen] = useState(false);
+  const [newClient, setNewClient] = useState({ razon_social: '', rif: '' });
+  const [clientCreating, setClientCreating] = useState(false);
+  
   // Advanced features state
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDateDesde, setFilterDateDesde] = useState('');
@@ -38,15 +43,29 @@ export default function OperacionesList() {
   // Form State
   const [formData, setFormData] = useState({
     codigo: '',
-    tipo: '',
+    tipo: 'Traslado',
     fecha: '',
     hora: '',
+    origen: '',
+    destino: '',
     ubicacion: '',
     indicativo_unidad: '',
     cedula_funcionario: '',
     precio: '',
     cliente_id: ''
   });
+
+  const [previewCodigo, setPreviewCodigo] = useState('');
+
+  useEffect(() => {
+    if (!editId && formData.origen && formData.fecha) {
+      axios.get(`http://localhost:3001/api/operaciones/preview-codigo?origen=${encodeURIComponent(formData.origen)}&fecha=${formData.fecha}`)
+        .then(res => setPreviewCodigo(res.data.codigo))
+        .catch(() => setPreviewCodigo(''));
+    } else {
+      setPreviewCodigo('');
+    }
+  }, [formData.origen, formData.fecha, editId]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -75,11 +94,14 @@ export default function OperacionesList() {
   const handleOpenModal = (op = null) => {
     if (op) {
       setEditId(op.id_novedad_d);
+      const parts = (op.ubicacion_novedad_d || '').split(' - ');
       setFormData({
         codigo: op.codigo_novedad_d || '',
-        tipo: op.tipo_novedad_d || '',
+        tipo: op.tipo_novedad_d || 'Traslado',
         fecha: op.fecha_novedad_d ? op.fecha_novedad_d.slice(0, 10) : '',
         hora: op.hora_novedad_d || '',
+        origen: parts[0] || '',
+        destino: parts.slice(1).join(' - ') || '',
         ubicacion: op.ubicacion_novedad_d || '',
         indicativo_unidad: op.indicativo_unidad || '',
         cedula_funcionario: op.cedula_funcionario || '',
@@ -88,9 +110,19 @@ export default function OperacionesList() {
       });
     } else {
       setEditId(null);
+      const now = new Date();
       setFormData({ 
-        codigo: '', tipo: '', fecha: '', hora: '', ubicacion: '', 
-        indicativo_unidad: '', cedula_funcionario: '', precio: '', cliente_id: '' 
+        codigo: '', 
+        tipo: 'Traslado', 
+        fecha: now.toISOString().slice(0, 10), 
+        hora: now.toTimeString().slice(0, 5), 
+        origen: '', 
+        destino: '', 
+        ubicacion: '', 
+        indicativo_unidad: '', 
+        cedula_funcionario: '', 
+        precio: '', 
+        cliente_id: '' 
       });
     }
     setIsModalOpen(true);
@@ -99,15 +131,41 @@ export default function OperacionesList() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const payload = {
+        ...formData,
+        ubicacion: (formData.origen && formData.destino)
+          ? `${formData.origen.trim()} - ${formData.destino.trim()}`
+          : (formData.origen || formData.destino || formData.ubicacion)
+      };
       if (editId) {
-        await axios.put(`http://localhost:3001/api/operaciones/${editId}`, formData);
+        await axios.put(`http://localhost:3001/api/operaciones/${editId}`, payload);
       } else {
-        await axios.post('http://localhost:3001/api/operaciones', formData);
+        await axios.post('http://localhost:3001/api/operaciones', payload);
       }
       setIsModalOpen(false);
       fetchData();
     } catch (error) {
       setErrorMessage("Ha ocurrido un error al guardar los datos de la operación.");
+    }
+  };
+
+  const handleCreateClient = async (e) => {
+    e.preventDefault();
+    setClientCreating(true);
+    try {
+      const res = await axios.post('http://localhost:3001/api/clientes', newClient);
+      const createdId = res.data.id;
+      // Refresh clients
+      const cliRes = await axios.get('http://localhost:3001/api/clientes');
+      setClientes(cliRes.data);
+      // Auto-select the new client
+      setFormData({ ...formData, cliente_id: createdId });
+      setIsClientModalOpen(false);
+      setNewClient({ razon_social: '', rif: '' });
+    } catch (error) {
+      setErrorMessage(error.response?.data?.error || "Error al crear el cliente");
+    } finally {
+      setClientCreating(false);
     }
   };
 
@@ -146,25 +204,25 @@ export default function OperacionesList() {
 
   const exportToCSV = () => {
     if (filteredOperaciones.length === 0) return;
-    const headers = ['Fecha', 'Hora', 'Codigo', 'Tipo', 'Ubicacion', 'Atendido', 'Cliente', 'Unidad', 'Funcionario', 'Estatus', 'Precio'];
+    const headers = ['Fecha', 'Hora', 'Código', 'Tipo', 'Ubicación', 'Atendido', 'Cliente', 'Unidad', 'Funcionario', 'Estatus', 'Precio'];
     const csvContent = [
-      headers.join(','),
+      headers.join(';'),
       ...filteredOperaciones.map(op => [
-        op.fecha_novedad_d?.slice(0,10),
-        op.hora_novedad_d,
-        `"${op.codigo_novedad_d}"`,
-        `"${op.tipo_novedad_d}"`,
-        `"${op.ubicacion_novedad_d}"`,
-        `"${op.nombre_atendido} ${op.apellido_atendido}"`,
-        `"${op.cliente_nombre || ''}"`,
-        `"${op.indicativo_unidad}"`,
-        `"${op.cedula_funcionario}"`,
-        `"${op.estatus}"`,
-        op.precio
-      ].join(','))
-    ].join('\\n');
+        `"${op.fecha_novedad_d?.slice(0,10) || ''}"`,
+        `"${op.hora_novedad_d || ''}"`,
+        `"${String(op.codigo_novedad_d || '').replace(/"/g, '""')}"`,
+        `"${String(op.tipo_novedad_d || '').replace(/"/g, '""')}"`,
+        `"${String(op.ubicacion_novedad_d || '').replace(/"/g, '""')}"`,
+        `"${String((op.nombre_atendido || '') + ' ' + (op.apellido_atendido || '')).trim().replace(/"/g, '""')}"`,
+        `"${String(op.cliente_nombre || '').replace(/"/g, '""')}"`,
+        `"${String(op.indicativo_unidad || '').replace(/"/g, '""')}"`,
+        `"${String(op.cedula_funcionario || '').replace(/"/g, '""')}"`,
+        `"${String(op.estatus || '').replace(/"/g, '""')}"`,
+        `"${op.precio ?? 0}"`
+      ].join(';'))
+    ].join('\r\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
@@ -365,15 +423,9 @@ export default function OperacionesList() {
         title={editId ? "Editar Novedad Diaria" : "Registrar Novedad Diaria"}
       >
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label>Código de Operación</label>
-              <input className="input-base" required placeholder="Ej: OP-001" value={formData.codigo} onChange={e => setFormData({...formData, codigo: e.target.value})} />
-            </div>
-            <div className="form-group" style={{ marginBottom: 0 }}>
-              <label>Tipo de Operación</label>
-              <input className="input-base" required placeholder="Ej: Traslado, Flete..." value={formData.tipo} onChange={e => setFormData({...formData, tipo: e.target.value})} />
-            </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label>Tipo de Operación</label>
+            <input className="input-base" required placeholder="Ej: Traslado, Flete..." value={formData.tipo} onChange={e => setFormData({...formData, tipo: e.target.value})} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
@@ -385,24 +437,70 @@ export default function OperacionesList() {
               <input type="time" className="input-base" required value={formData.hora} onChange={e => setFormData({...formData, hora: e.target.value})} />
             </div>
           </div>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label>Destino</label>
-            <input className="input-base" required placeholder="Ej: Caracas - Valencia" value={formData.ubicacion} onChange={e => setFormData({...formData, ubicacion: e.target.value})} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Origen (Ciudad de Salida)</label>
+              <input 
+                className="input-base" 
+                required 
+                placeholder="Ej: Caracas" 
+                value={formData.origen} 
+                onChange={e => setFormData({...formData, origen: e.target.value})} 
+              />
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Destino (Ciudad de Llegada)</label>
+              <input 
+                className="input-base" 
+                required 
+                placeholder="Ej: Valencia" 
+                value={formData.destino} 
+                onChange={e => setFormData({...formData, destino: e.target.value})} 
+              />
+            </div>
           </div>
+          {!editId && previewCodigo && (
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px', 
+              padding: '8px 12px', 
+              background: 'rgba(45, 90, 39, 0.1)', 
+              border: '1px solid var(--accent-primary)', 
+              borderRadius: '6px', 
+              fontSize: '13px' 
+            }}>
+              <span>Código asignado automáticamente:</span>
+              <strong style={{ color: 'var(--accent-primary)', fontSize: '15px', letterSpacing: '1px' }}>{previewCodigo}</strong>
+            </div>
+          )}
           
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
-              <label>Cliente Asignado</label>
-              <select 
-                className="input-base" 
-                value={formData.cliente_id} 
-                onChange={e => setFormData({...formData, cliente_id: e.target.value})}
-              >
-                <option value="">Ninguno (General)</option>
-                {clientes.map(c => (
-                  <option key={c.id_cliente} value={c.id_cliente}>{c.razon_social} ({c.rif})</option>
-                ))}
-              </select>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-end' }}>
+                <div style={{ flex: 1 }}>
+                  <label>Cliente Asignado</label>
+                  <select 
+                    className="input-base" 
+                    value={formData.cliente_id} 
+                    onChange={e => setFormData({...formData, cliente_id: e.target.value})}
+                  >
+                    <option value="">Ninguno (General)</option>
+                    {clientes.map(c => (
+                      <option key={c.id_cliente} value={c.id_cliente}>{c.razon_social} ({c.rif})</option>
+                    ))}
+                  </select>
+                </div>
+                <button 
+                  type="button" 
+                  onClick={() => setIsClientModalOpen(true)} 
+                  className="btn-secondary" 
+                  style={{ padding: '8px 12px', height: '42px', whiteSpace: 'nowrap' }}
+                  title="Registrar Nuevo Cliente Rápido"
+                >
+                  <Plus size={18} /> Nuevo
+                </button>
+              </div>
             </div>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label>Precio de la Operación ($)</label>
@@ -449,6 +547,28 @@ export default function OperacionesList() {
         </form>
       </Modal>
 
+      {/* Fast Client Creation Modal */}
+      <Modal 
+        isOpen={isClientModalOpen} 
+        onClose={() => setIsClientModalOpen(false)} 
+        title="Registrar Nuevo Cliente"
+      >
+        <form onSubmit={handleCreateClient} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label>Razón Social (Nombre)</label>
+            <input className="input-base" required placeholder="Ej: Transportes C.A." value={newClient.razon_social} onChange={e => setNewClient({...newClient, razon_social: e.target.value})} />
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label>RIF</label>
+            <input className="input-base" required placeholder="Ej: J-12345678-9" value={newClient.rif} onChange={e => setNewClient({...newClient, rif: e.target.value})} />
+          </div>
+          <div className="form-actions">
+            <button type="button" onClick={() => setIsClientModalOpen(false)} className="btn-secondary" disabled={clientCreating}>Cancelar</button>
+            <button type="submit" className="btn-primary" style={{ width: 'auto' }} disabled={clientCreating}>{clientCreating ? 'Guardando...' : 'Guardar y Seleccionar'}</button>
+          </div>
+        </form>
+      </Modal>
+
       {/* Delete Confirmation Modal */}
       <Modal 
         isOpen={deleteConfirmId !== null} 
@@ -483,40 +603,104 @@ export default function OperacionesList() {
 
     {/* Printable Section */}
     {reportData && (
-      <div className="print-only" style={{ padding: '40px', fontFamily: 'Arial, sans-serif' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
-          <img src={logoImg} alt="Logo" style={{ height: '80px' }} />
-          <h1 style={{ margin: 0, fontSize: '24px' }}>INFORME OFICIAL DE NOVEDAD</h1>
+      <div className="print-only" style={{ padding: '20px', fontFamily: 'Arial, sans-serif', color: '#111827', lineHeight: '1.5' }}>
+        {/* Encabezado Corporativo Oficial */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '3px solid #2d5a27', paddingBottom: '16px', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <img src={logoImg} alt="Logo" style={{ height: '75px', borderRadius: '6px' }} />
+            <div>
+              <h2 style={{ margin: 0, fontSize: '20px', color: '#2d5a27', letterSpacing: '0.5px' }}>AGRO-SERVICIOS C.A.</h2>
+              <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#4b5563' }}>Transporte y Logística Operativa Especializada</p>
+              <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#6b7280' }}>R.I.F. J-31245678-9 | Despacho y Control de Flota</p>
+            </div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ background: '#f3f4f6', border: '1px solid #d1d5db', padding: '6px 14px', borderRadius: '6px', display: 'inline-block' }}>
+              <span style={{ fontSize: '11px', textTransform: 'uppercase', color: '#6b7280', display: 'block' }}>Código de Control</span>
+              <strong style={{ fontSize: '16px', color: '#2d5a27', letterSpacing: '1px' }}>{reportData.codigo_novedad_d}</strong>
+            </div>
+            <p style={{ margin: '6px 0 0 0', fontSize: '12px', color: '#4b5563' }}>
+              Fecha de Emisión: <strong>{new Date().toLocaleDateString('es-ES')}</strong>
+            </p>
+          </div>
         </div>
-        
-        <p style={{ textAlign: 'justify', lineHeight: '1.6', fontSize: '16px' }}>
-          Cumpliendo con nuestros deberes de llevar un registro detallado de los incidentes ocurridos, notificamos el siguiente informe:
-        </p>
 
-        <p style={{ textAlign: 'justify', lineHeight: '1.6', fontSize: '16px', marginTop: '20px' }}>
-          El día <strong>{formatDate(reportData.fecha_novedad_d)}</strong> siendo las <strong>{reportData.hora_novedad_d}</strong>, 
-          se presentó en la ubicación <strong>{reportData.ubicacion_novedad_d}</strong> una novedad de tipo <strong>{reportData.tipo_novedad_d}</strong> (Código: {reportData.codigo_novedad_d}).
-        </p>
+        {/* Título Central */}
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <h1 style={{ margin: 0, fontSize: '20px', textTransform: 'uppercase', letterSpacing: '1px', color: '#111827' }}>
+            Informe Oficial de Operación / Novedad
+          </h1>
+          <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#6b7280' }}>
+            Documento de Constancia y Trazabilidad Operacional
+          </p>
+        </div>
 
-        <p style={{ textAlign: 'justify', lineHeight: '1.6', fontSize: '16px', marginTop: '20px' }}>
-          Estatus de la Operación: <strong>{reportData.estatus}</strong> <br/>
-          Cliente Relacionado: <strong>{reportData.cliente_nombre || 'N/A'}</strong> <br/>
-          Costo Facturado: <strong>${Number(reportData.precio).toFixed(2)}</strong>
-        </p>
+        {/* Ficha Resumen de la Operación */}
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '24px', fontSize: '13px' }}>
+          <tbody>
+            <tr style={{ background: '#f9fafb' }}>
+              <td style={{ border: '1px solid #e5e7eb', padding: '10px 14px', fontWeight: 'bold', width: '25%', color: '#374151' }}>Tipo de Operación:</td>
+              <td style={{ border: '1px solid #e5e7eb', padding: '10px 14px', width: '25%' }}>{reportData.tipo_novedad_d}</td>
+              <td style={{ border: '1px solid #e5e7eb', padding: '10px 14px', fontWeight: 'bold', width: '25%', color: '#374151' }}>Estatus del Viaje:</td>
+              <td style={{ border: '1px solid #e5e7eb', padding: '10px 14px', width: '25%', fontWeight: 'bold', color: reportData.estatus === 'Realizado' ? '#166534' : '#b45309' }}>
+                {reportData.estatus}
+              </td>
+            </tr>
+            <tr>
+              <td style={{ border: '1px solid #e5e7eb', padding: '10px 14px', fontWeight: 'bold', color: '#374151' }}>Fecha de Ejecución:</td>
+              <td style={{ border: '1px solid #e5e7eb', padding: '10px 14px' }}>{formatDate(reportData.fecha_novedad_d)}</td>
+              <td style={{ border: '1px solid #e5e7eb', padding: '10px 14px', fontWeight: 'bold', color: '#374151' }}>Hora de Salida:</td>
+              <td style={{ border: '1px solid #e5e7eb', padding: '10px 14px' }}>{reportData.hora_novedad_d || 'N/A'}</td>
+            </tr>
+            <tr style={{ background: '#f9fafb' }}>
+              <td style={{ border: '1px solid #e5e7eb', padding: '10px 14px', fontWeight: 'bold', color: '#374151' }}>Ruta / Ubicación:</td>
+              <td style={{ border: '1px solid #e5e7eb', padding: '10px 14px' }} colSpan={3}>
+                <strong>{reportData.ubicacion_novedad_d}</strong>
+              </td>
+            </tr>
+            <tr>
+              <td style={{ border: '1px solid #e5e7eb', padding: '10px 14px', fontWeight: 'bold', color: '#374151' }}>Cliente Beneficiario:</td>
+              <td style={{ border: '1px solid #e5e7eb', padding: '10px 14px' }}>{reportData.cliente_nombre || 'General / Sin Asignar'}</td>
+              <td style={{ border: '1px solid #e5e7eb', padding: '10px 14px', fontWeight: 'bold', color: '#374151' }}>Costo / Flete:</td>
+              <td style={{ border: '1px solid #e5e7eb', padding: '10px 14px', fontWeight: 'bold', fontSize: '14px', color: '#111827' }}>
+                ${Number(reportData.precio || 0).toFixed(2)} USD
+              </td>
+            </tr>
+            <tr style={{ background: '#f9fafb' }}>
+              <td style={{ border: '1px solid #e5e7eb', padding: '10px 14px', fontWeight: 'bold', color: '#374151' }}>Unidad de Transporte:</td>
+              <td style={{ border: '1px solid #e5e7eb', padding: '10px 14px' }}>Placa: <strong>{reportData.indicativo_unidad || 'No especificada'}</strong></td>
+              <td style={{ border: '1px solid #e5e7eb', padding: '10px 14px', fontWeight: 'bold', color: '#374151' }}>Chofer Responsable:</td>
+              <td style={{ border: '1px solid #e5e7eb', padding: '10px 14px' }}>C.I: <strong>{reportData.cedula_funcionario}</strong></td>
+            </tr>
+          </tbody>
+        </table>
 
-        <p style={{ textAlign: 'justify', lineHeight: '1.6', fontSize: '16px', marginTop: '20px' }}>
-          Durante la operación, se atendió a <strong>{reportData.nombre_atendido} {reportData.apellido_atendido}</strong> 
-          (Cédula: <strong>{reportData.cedula_atendido || 'No especificada'}</strong>).
-        </p>
+        {/* Declaración Formal */}
+        <div style={{ background: '#f9fafb', borderLeft: '4px solid #2d5a27', padding: '14px 18px', marginBottom: '28px', fontSize: '13px', lineHeight: '1.6' }}>
+          <p style={{ margin: 0, textAlign: 'justify' }}>
+            Por medio de la presente, se certifica que la operación de transporte identificada con el código <strong>{reportData.codigo_novedad_d}</strong> fue despachada en la fecha indicada con ruta <strong>{reportData.ubicacion_novedad_d}</strong> bajo la conducción del titular de la cédula <strong>{reportData.cedula_funcionario}</strong> en la unidad <strong>{reportData.indicativo_unidad}</strong>, cumpliendo con los estándares de seguridad y entrega de AGRO-SERVICIOS C.A.
+          </p>
+        </div>
 
-        <p style={{ textAlign: 'justify', lineHeight: '1.6', fontSize: '16px', marginTop: '20px' }}>
-          El funcionario a cargo fue titular de la cédula <strong>{reportData.cedula_funcionario}</strong>, movilizándose en la unidad con indicativo <strong>{reportData.indicativo_unidad || 'No especificada'}</strong>.
-        </p>
+        {/* Bloque de Firmas */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '60px', marginTop: '60px', textAlign: 'center' }}>
+          <div>
+            <div style={{ borderTop: '1px solid #000000', paddingTop: '8px', width: '80%', margin: '0 auto' }}>
+              <p style={{ margin: '0', fontWeight: 'bold', fontSize: '13px' }}>Firma del Chofer / Funcionario</p>
+              <p style={{ margin: '3px 0 0 0', fontSize: '12px', color: '#4b5563' }}>C.I: {reportData.cedula_funcionario}</p>
+            </div>
+          </div>
+          <div>
+            <div style={{ borderTop: '1px solid #000000', paddingTop: '8px', width: '80%', margin: '0 auto' }}>
+              <p style={{ margin: '0', fontWeight: 'bold', fontSize: '13px' }}>Gerencia de Operaciones</p>
+              <p style={{ margin: '3px 0 0 0', fontSize: '12px', color: '#4b5563' }}>Firma y Sello Autorizado</p>
+            </div>
+          </div>
+        </div>
 
-        <div style={{ marginTop: '80px', textAlign: 'center' }}>
-          <p>________________________________________</p>
-          <p style={{ margin: '5px 0 0 0', fontWeight: 'bold' }}>Firma del Funcionario</p>
-          <p style={{ margin: '0' }}>C.I: {reportData.cedula_funcionario}</p>
+        {/* Pie de Página Oficial */}
+        <div style={{ marginTop: '50px', borderTop: '1px solid #e5e7eb', paddingTop: '10px', textAlign: 'center', fontSize: '11px', color: '#9ca3af' }}>
+          Documento generado automáticamente por el Sistema de Gestión Agro-Servicios. Válido para fines administrativos y auditoría.
         </div>
       </div>
     )}

@@ -119,21 +119,21 @@ export default function UnidadesList() {
 
   const exportToCSV = () => {
     if (filteredUnidades.length === 0) return;
-    const headers = ['Placa', 'Tipo', 'Descripcion', 'Marca', 'Modelo', 'Ano', 'Estado'];
+    const headers = ['Placa', 'Tipo', 'Descripción', 'Marca', 'Modelo', 'Tipo de Carga', 'Estado'];
     const csvContent = [
-      headers.join(','),
+      headers.join(';'),
       ...filteredUnidades.map(un => [
-        `"${un.codigo_equipo}"`,
-        `"${un.tipo_equipo}"`,
-        `"${un.nombre_equipo}"`,
-        `"${un.marca_equipo || ''}"`,
-        `"${un.modelo_equipo || ''}"`,
-        `"${un.tamano_equipo || ''}"`,
+        `"${String(un.codigo_equipo || '').replace(/"/g, '""')}"`,
+        `"${String(un.tipo_equipo || '').replace(/"/g, '""')}"`,
+        `"${String(un.nombre_equipo || '').replace(/"/g, '""')}"`,
+        `"${String(un.marca_equipo || '').replace(/"/g, '""')}"`,
+        `"${String(un.modelo_equipo || '').replace(/"/g, '""')}"`,
+        `"${String(un.tamano_equipo || '').replace(/"/g, '""')}"`,
         `"${un.estado_equipo ? 'Activa' : 'Inactiva'}"`
-      ].join(','))
-    ].join('\n');
+      ].join(';'))
+    ].join('\r\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
@@ -206,7 +206,7 @@ export default function UnidadesList() {
               <th style={{ padding: '12px' }}>Tipo</th>
               <th style={{ padding: '12px' }}>Descripción</th>
               <th style={{ padding: '12px' }}>Marca / Modelo</th>
-              <th style={{ padding: '12px' }}>Año</th>
+              <th style={{ padding: '12px' }}>Tipo de Carga</th>
               <th style={{ padding: '12px' }}>Estado</th>
               <th style={{ padding: '12px', textAlign: 'center' }}>Acciones</th>
             </tr>
@@ -290,8 +290,12 @@ export default function UnidadesList() {
             </div>
           </div>
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label>Año (Tamaño)</label>
-            <input className="input-base" placeholder="Ej: 2012" value={formData.tamano} onChange={e => setFormData({...formData, tamano: e.target.value})} />
+            <label>Tipo de Carga</label>
+            <select className="input-base" required value={formData.tamano} onChange={e => setFormData({...formData, tamano: e.target.value})}>
+              <option value="">Seleccione...</option>
+              <option value="Ligera">Ligera</option>
+              <option value="Pesada">Pesada</option>
+            </select>
           </div>
           
           <div className="form-actions">

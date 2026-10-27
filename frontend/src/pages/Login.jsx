@@ -101,7 +101,6 @@ export default function Login() {
               <div className="form-group">
                 <div className="form-group-header">
                   <label htmlFor="clave">Contraseña</label>
-                  <a href="#" className="forgot-link">¿Olvidó su contraseña?</a>
                 </div>
                 <input
                   type="password"
@@ -120,10 +119,7 @@ export default function Login() {
             </form>
 
             <div className="login-footer" style={{ marginTop: '16px', textAlign: 'center' }}>
-              <Link to="/forgot-password" style={{ display: 'block', marginBottom: '12px', fontSize: '14px' }}>¿Olvidó su contraseña?</Link>
-              <div className="create-account-text">
-                ¿No tienes cuenta? <Link to="/register" className="create-account-link">Crear cuenta</Link>
-              </div>
+              <Link to="/forgot-password" style={{ display: 'block', fontSize: '14px', color: 'var(--primary-color)', textDecoration: 'none' }}>¿Olvidó su contraseña?</Link>
             </div>
           </div>
         </div>

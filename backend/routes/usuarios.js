@@ -12,13 +12,17 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Crear usuario (La clave se guarda en MD5 para compatibilidad con la app original)
+const crypto = require('crypto');
+const md5 = (text) => crypto.createHash('md5').update(text.toString()).digest('hex');
+
+// Crear usuario
 router.post('/', async (req, res) => {
-  const { usuario, clave, email, pregunta, respuesta, privilegio } = req.body;
+  const { usuario, clave, email, codigo_recuperacion, privilegio, perm_clientes, perm_operaciones, perm_unidades, perm_operadores, perm_costos } = req.body;
   try {
+    const hashedClave = md5(clave);
     const [result] = await db.query(
-      'INSERT INTO seguridad (usuario, clave, email, pregunta, respuesta, privilegio) VALUES (?, MD5(?), ?, ?, ?, ?)',
-      [usuario, clave, email, pregunta, respuesta, privilegio]
+      'INSERT INTO seguridad (usuario, clave, email, codigo_recuperacion, privilegio, perm_clientes, perm_operaciones, perm_unidades, perm_operadores, perm_costos) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [usuario, hashedClave, email, codigo_recuperacion || 'AGRO123', privilegio, perm_clientes ? 1 : 0, perm_operaciones ? 1 : 0, perm_unidades ? 1 : 0, perm_operadores ? 1 : 0, perm_costos ? 1 : 0]
     );
     res.status(201).json({ id: result.insertId, message: 'Usuario creado exitosamente' });
   } catch (error) {

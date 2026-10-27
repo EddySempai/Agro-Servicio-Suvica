@@ -17,16 +17,19 @@ export default function DashboardAdmin() {
   const [operadoresList, setOperadoresList] = useState([]);
   const [unidadesList, setUnidadesList] = useState([]);
   const [rentabilidad, setRentabilidad] = useState({ ingresos: 0, gastos: 0, balance: 0 });
+  const [pendientes, setPendientes] = useState([]);
 
   useEffect(() => {
     const fetchSelectData = async () => {
       try {
-        const [opRes, unRes] = await Promise.all([
+        const [opRes, unRes, penRes] = await Promise.all([
           axios.get('http://localhost:3001/api/operadores'),
-          axios.get('http://localhost:3001/api/unidades')
+          axios.get('http://localhost:3001/api/unidades'),
+          axios.get('http://localhost:3001/api/operaciones/pendientes')
         ]);
         setOperadoresList(opRes.data);
         setUnidadesList(unRes.data);
+        setPendientes(penRes.data);
       } catch (error) {
         console.error("Error fetching filter options", error);
       }
@@ -102,7 +105,7 @@ export default function DashboardAdmin() {
 
   return (
     <>
-    <div className="animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div className="animate-fade-in no-print" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
       <div className="glass-panel" style={{ padding: '30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
@@ -200,6 +203,43 @@ export default function DashboardAdmin() {
         </div>
       </div>
 
+      {/* Operaciones Pendientes */}
+      <div className="glass-panel" style={{ padding: '24px' }}>
+        <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: 0, marginBottom: '20px' }}>
+          <AlertTriangle size={20} color="#f59e0b" />
+          Operaciones Pendientes ({pendientes.length})
+        </h3>
+        {pendientes.length === 0 ? (
+          <p style={{ color: 'var(--text-secondary)' }}>No hay viajes pendientes por los momentos.</p>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--border-color)', textAlign: 'left' }}>
+                  <th style={{ padding: '12px' }}>Fecha</th>
+                  <th style={{ padding: '12px' }}>Operación</th>
+                  <th style={{ padding: '12px' }}>Cliente</th>
+                  <th style={{ padding: '12px' }}>Unidad</th>
+                  <th style={{ padding: '12px' }}>Chofer (C.I.)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendientes.slice(0, 10).map(op => (
+                  <tr key={op.id_novedad_d} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                    <td style={{ padding: '12px' }}>{new Date(op.fecha_novedad_d).toLocaleDateString('es-ES')} {op.hora_novedad_d}</td>
+                    <td style={{ padding: '12px' }}><strong>{op.codigo_novedad_d}</strong><br/><span style={{ fontSize: '12px' }}>{op.tipo_novedad_d}</span></td>
+                    <td style={{ padding: '12px' }}>{op.cliente_nombre || 'N/A'}</td>
+                    <td style={{ padding: '12px', fontWeight: 'bold' }}>{op.indicativo_unidad}</td>
+                    <td style={{ padding: '12px' }}>{op.cedula_funcionario}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {pendientes.length > 10 && <p style={{ textAlign: 'center', fontSize: '14px', marginTop: '10px' }}>Y {pendientes.length - 10} más. Ve al módulo de Operaciones para gestionarlas.</p>}
+          </div>
+        )}
+      </div>
+
       <div className="glass-panel" style={{ padding: '24px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', marginBottom: '24px' }}>
           <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0 }}>
@@ -262,52 +302,93 @@ export default function DashboardAdmin() {
     
     {/* Printable Section for Rentabilidad */}
     {rentabilidad && (
-      <div className="print-only" style={{ padding: '40px', fontFamily: 'Arial, sans-serif' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
-          <img src={logoImg} alt="Logo" style={{ height: '80px' }} />
-          <div>
-            <h1 style={{ margin: 0, fontSize: '24px', textAlign: 'right' }}>REPORTE CONFIDENCIAL DE RENTABILIDAD</h1>
-            <p style={{ margin: '5px 0 0 0', textAlign: 'right', color: '#666' }}>Fecha de Emisión: {new Date().toLocaleDateString('es-ES')}</p>
+      <div className="print-only" style={{ padding: '20px', fontFamily: 'Arial, sans-serif', color: '#111827', lineHeight: '1.5' }}>
+        {/* Encabezado Corporativo Oficial */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '3px solid #2d5a27', paddingBottom: '16px', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <img src={logoImg} alt="Logo" style={{ height: '75px', borderRadius: '6px' }} />
+            <div>
+              <h2 style={{ margin: 0, fontSize: '20px', color: '#2d5a27', letterSpacing: '0.5px' }}>AGRO-SERVICIOS C.A.</h2>
+              <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#4b5563' }}>Departamento de Administración y Finanzas</p>
+              <p style={{ margin: '2px 0 0 0', fontSize: '11px', color: '#6b7280' }}>R.I.F. J-31245678-9 | Balance Operativo Consolidado</p>
+            </div>
+          </div>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ background: '#f3f4f6', border: '1px solid #d1d5db', padding: '6px 14px', borderRadius: '6px', display: 'inline-block' }}>
+              <span style={{ fontSize: '11px', textTransform: 'uppercase', color: '#6b7280', display: 'block' }}>Documento</span>
+              <strong style={{ fontSize: '15px', color: '#2d5a27' }}>FIN-{new Date().toISOString().slice(0,10).replace(/-/g, '')}</strong>
+            </div>
+            <p style={{ margin: '6px 0 0 0', fontSize: '12px', color: '#4b5563' }}>Fecha: <strong>{new Date().toLocaleDateString('es-ES')}</strong></p>
           </div>
         </div>
+
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <h1 style={{ margin: 0, fontSize: '20px', textTransform: 'uppercase', letterSpacing: '1px', color: '#111827' }}>
+            Reporte Confidencial de Rentabilidad y Balance Operativo
+          </h1>
+          <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#6b7280' }}>
+            Auditoría de Ingresos por Operaciones y Costos de Mantenimiento de Flota
+          </p>
+        </div>
         
-        <p style={{ textAlign: 'justify', lineHeight: '1.6', fontSize: '16px', marginBottom: '40px' }}>
-          Este documento detalla el balance financiero operativo de la empresa, tomando en consideración exclusivamente los ingresos por operaciones completadas (estatus "Realizado") y los egresos correspondientes al mantenimiento y reparación de la flota de unidades.
+        <p style={{ textAlign: 'justify', lineHeight: '1.6', fontSize: '13px', marginBottom: '24px', background: '#f9fafb', padding: '12px 16px', borderLeft: '4px solid #2d5a27' }}>
+          El presente informe consolida el desempeño financiero del período seleccionado, contrastando exclusivamente los ingresos brutos generados por viajes y traslados completados (estatus "Realizado") frente a los desembolsos por concepto de repuestos, lubricantes y reparaciones mecánicas de las unidades.
         </p>
 
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '40px' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '30px' }}>
           <thead>
-            <tr>
-              <th style={{ border: '1px solid #ccc', padding: '12px', background: '#f5f5f5', textAlign: 'left' }}>Concepto</th>
-              <th style={{ border: '1px solid #ccc', padding: '12px', background: '#f5f5f5', textAlign: 'right' }}>Monto (USD)</th>
+            <tr style={{ background: '#f3f4f6' }}>
+              <th style={{ border: '1px solid #d1d5db', padding: '12px', textAlign: 'left', fontSize: '13px' }}>Concepto Financiero</th>
+              <th style={{ border: '1px solid #d1d5db', padding: '12px', textAlign: 'right', fontSize: '13px', width: '220px' }}>Monto Liquidado (USD)</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td style={{ border: '1px solid #ccc', padding: '12px', fontSize: '18px' }}>Total Ingresos (Operaciones Realizadas)</td>
-              <td style={{ border: '1px solid #ccc', padding: '12px', textAlign: 'right', fontSize: '18px', color: 'green', fontWeight: 'bold' }}>
-                ${Number(rentabilidad.ingresos).toFixed(2)}
+              <td style={{ border: '1px solid #e5e7eb', padding: '12px', fontSize: '14px' }}>
+                <strong>Total Ingresos por Fletes y Operaciones</strong>
+                <div style={{ fontSize: '12px', color: '#6b7280' }}>Servicios de transporte efectivamente culminados</div>
+              </td>
+              <td style={{ border: '1px solid #e5e7eb', padding: '12px', textAlign: 'right', fontSize: '15px', color: '#166534', fontWeight: 'bold' }}>
+                + ${Number(rentabilidad.ingresos).toFixed(2)}
               </td>
             </tr>
-            <tr>
-              <td style={{ border: '1px solid #ccc', padding: '12px', fontSize: '18px' }}>Total Egresos (Mantenimiento de Flota)</td>
-              <td style={{ border: '1px solid #ccc', padding: '12px', textAlign: 'right', fontSize: '18px', color: 'red', fontWeight: 'bold' }}>
+            <tr style={{ background: '#fafafa' }}>
+              <td style={{ border: '1px solid #e5e7eb', padding: '12px', fontSize: '14px' }}>
+                <strong>Total Egresos por Mantenimiento de Flota</strong>
+                <div style={{ fontSize: '12px', color: '#6b7280' }}>Gastos de servicio técnico, partes e insumos</div>
+              </td>
+              <td style={{ border: '1px solid #e5e7eb', padding: '12px', textAlign: 'right', fontSize: '15px', color: '#dc2626', fontWeight: 'bold' }}>
                 - ${Number(rentabilidad.gastos).toFixed(2)}
               </td>
             </tr>
-            <tr>
-              <td style={{ border: '1px solid #ccc', padding: '12px', fontSize: '20px', fontWeight: 'bold', background: '#eee' }}>BALANCE NETO OPERATIVO</td>
-              <td style={{ border: '1px solid #ccc', padding: '12px', textAlign: 'right', fontSize: '24px', fontWeight: 'bold', background: '#eee', color: rentabilidad.balance >= 0 ? 'green' : 'red' }}>
-                ${Number(rentabilidad.balance).toFixed(2)}
+            <tr style={{ background: '#f3f4f6' }}>
+              <td style={{ border: '2px solid #9ca3af', padding: '14px 12px', fontSize: '15px', fontWeight: 'bold', color: '#111827' }}>
+                BALANCE NETO OPERATIVO
+              </td>
+              <td style={{ border: '2px solid #9ca3af', padding: '14px 12px', textAlign: 'right', fontSize: '18px', fontWeight: 'bold', color: rentabilidad.balance >= 0 ? '#166534' : '#dc2626' }}>
+                ${Number(rentabilidad.balance).toFixed(2)} USD
               </td>
             </tr>
           </tbody>
         </table>
 
-        <div style={{ marginTop: '100px', textAlign: 'center' }}>
-          <p>________________________________________</p>
-          <p style={{ margin: '5px 0 0 0', fontWeight: 'bold' }}>Autorizado por la Gerencia General</p>
-          <p style={{ margin: '0' }}>Documento de Uso Interno</p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '60px', marginTop: '60px', textAlign: 'center' }}>
+          <div>
+            <div style={{ borderTop: '1px solid #000000', paddingTop: '8px', width: '80%', margin: '0 auto' }}>
+              <p style={{ margin: '0', fontWeight: 'bold', fontSize: '13px' }}>Elaborado por Administración</p>
+              <p style={{ margin: '3px 0 0 0', fontSize: '12px', color: '#4b5563' }}>Auditoría Interna</p>
+            </div>
+          </div>
+          <div>
+            <div style={{ borderTop: '1px solid #000000', paddingTop: '8px', width: '80%', margin: '0 auto' }}>
+              <p style={{ margin: '0', fontWeight: 'bold', fontSize: '13px' }}>Gerencia General</p>
+              <p style={{ margin: '3px 0 0 0', fontSize: '12px', color: '#4b5563' }}>Aprobación y Visto Bueno</p>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ marginTop: '50px', borderTop: '1px solid #e5e7eb', paddingTop: '10px', textAlign: 'center', fontSize: '11px', color: '#9ca3af' }}>
+          Documento Confidencial de Uso Exclusivo de AGRO-SERVICIOS C.A.
         </div>
       </div>
     )}

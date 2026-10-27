@@ -31,9 +31,17 @@ app.use('/api/usuarios', verifyToken, verifyAdmin, usuariosRoutes);
 app.use('/api/admin', verifyToken, verifyAdmin, adminRoutes);
 
 
+const path = require('path');
+
 // Basic check route
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
+});
+
+// Serve frontend in production (Electron)
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
+app.use((req, res) => {
+  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
 
 // Start Server

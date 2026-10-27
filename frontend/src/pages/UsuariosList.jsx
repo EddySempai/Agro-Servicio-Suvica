@@ -19,8 +19,7 @@ export default function UsuariosList() {
     usuario: '',
     clave: '',
     email: '',
-    pregunta: '',
-    respuesta: '',
+    codigo_recuperacion: '',
     privilegio: 'U',
     perm_clientes: false,
     perm_operaciones: false,
@@ -52,8 +51,7 @@ export default function UsuariosList() {
         usuario: usuario.usuario,
         clave: '', 
         email: usuario.email,
-        pregunta: '',
-        respuesta: '',
+        codigo_recuperacion: '',
         privilegio: usuario.privilegio,
         perm_clientes: usuario.perm_clientes === 1,
         perm_operaciones: usuario.perm_operaciones === 1,
@@ -63,7 +61,7 @@ export default function UsuariosList() {
       });
     } else {
       setEditId(null);
-      setFormData({ usuario: '', clave: '', email: '', pregunta: '', respuesta: '', privilegio: 'U', perm_clientes: false, perm_operaciones: false, perm_unidades: false, perm_operadores: false, perm_costos: false });
+      setFormData({ usuario: '', clave: '', email: '', codigo_recuperacion: '', privilegio: 'U', perm_clientes: false, perm_operaciones: false, perm_unidades: false, perm_operadores: false, perm_costos: false });
     }
     setIsModalOpen(true);
   };
@@ -176,15 +174,9 @@ export default function UsuariosList() {
           </div>
           {/* Show password/questions only if new user */}
           {!editId && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label>Pregunta Secreta</label>
-                <input className="input-base" required value={formData.pregunta} onChange={e => setFormData({...formData, pregunta: e.target.value})} />
-              </div>
-              <div className="form-group" style={{ marginBottom: 0 }}>
-                <label>Respuesta Secreta</label>
-                <input type="password" className="input-base" required value={formData.respuesta} onChange={e => setFormData({...formData, respuesta: e.target.value})} />
-              </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label>Código de Recuperación (Único para restablecer contraseña)</label>
+              <input type="text" className="input-base" required placeholder="Ej. AGRO123" value={formData.codigo_recuperacion} onChange={e => setFormData({...formData, codigo_recuperacion: e.target.value})} />
             </div>
           )}
           <div className="form-group" style={{ marginBottom: 0 }}>

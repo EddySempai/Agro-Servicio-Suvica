@@ -1,7 +1,14 @@
+import { useEffect } from 'react';
 import { X } from 'lucide-react';
 import './Modal.css';
 
 export default function Modal({ isOpen, onClose, title, children }) {
+  useEffect(() => {
+    if (isOpen) {
+      window.dispatchEvent(new CustomEvent('close-sidebar'));
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (

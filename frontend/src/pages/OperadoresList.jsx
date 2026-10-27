@@ -119,20 +119,21 @@ export default function OperadoresList() {
 
   const exportToCSV = () => {
     if (filteredOperadores.length === 0) return;
-    const headers = ['Cedula', 'Nombre', 'Apellido', 'Telefono', 'Cargo', 'Estado'];
+    const headers = ['Cédula', 'Nombre', 'Apellido', 'Teléfono', 'Dirección', 'Cargo', 'Estado'];
     const csvContent = [
-      headers.join(','),
+      headers.join(';'),
       ...filteredOperadores.map(op => [
-        `"${op.cedula_funcionario}"`,
-        `"${op.nombre_funcionario}"`,
-        `"${op.apellido_funcionario}"`,
-        `"${op.telefono_funcionario || ''}"`,
-        `"${op.cargo_funcionario}"`,
+        `"${String(op.cedula_funcionario || '').replace(/"/g, '""')}"`,
+        `"${String(op.nombre_funcionario || '').replace(/"/g, '""')}"`,
+        `"${String(op.apellido_funcionario || '').replace(/"/g, '""')}"`,
+        `"${String(op.telefono_funcionario || '').replace(/"/g, '""')}"`,
+        `"${String(op.direccion_funcionario || '').replace(/"/g, '""')}"`,
+        `"${String(op.cargo_funcionario || '').replace(/"/g, '""')}"`,
         `"${op.estado_funcionario ? 'Activo' : 'Inactivo'}"`
-      ].join(','))
-    ].join('\n');
+      ].join(';'))
+    ].join('\r\n');
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.setAttribute("href", url);
@@ -195,6 +196,7 @@ export default function OperadoresList() {
               <th style={{ padding: '12px' }}>Cédula</th>
               <th style={{ padding: '12px' }}>Nombre Completo</th>
               <th style={{ padding: '12px' }}>Teléfono</th>
+              <th style={{ padding: '12px' }}>Dirección</th>
               <th style={{ padding: '12px' }}>Cargo</th>
               <th style={{ padding: '12px' }}>Estado</th>
               <th style={{ padding: '12px', textAlign: 'center' }}>Acciones</th>
@@ -206,6 +208,7 @@ export default function OperadoresList() {
                 <td style={{ padding: '12px' }}>{op.cedula_funcionario}</td>
                 <td style={{ padding: '12px' }}>{op.nombre_funcionario} {op.apellido_funcionario}</td>
                 <td style={{ padding: '12px' }}>{op.telefono_funcionario}</td>
+                <td style={{ padding: '12px', fontSize: '14px', maxWidth: '150px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={op.direccion_funcionario}>{op.direccion_funcionario || 'N/A'}</td>
                 <td style={{ padding: '12px' }}>{op.cargo_funcionario}</td>
                 <td style={{ padding: '12px' }}>
                   <span style={{ 

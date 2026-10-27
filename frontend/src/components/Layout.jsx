@@ -16,6 +16,15 @@ export default function Layout() {
       setIsDark(true);
       document.documentElement.classList.add('dark');
     }
+
+    const handleCloseSidebar = () => {
+      setIsSidebarOpen(false);
+    };
+    window.addEventListener('close-sidebar', handleCloseSidebar);
+
+    return () => {
+      window.removeEventListener('close-sidebar', handleCloseSidebar);
+    };
   }, []);
 
   const toggleTheme = () => {
@@ -62,7 +71,7 @@ export default function Layout() {
   return (
     <div className="layout-container">
       {/* Sidebar */}
-      <aside className={`sidebar glass-panel ${!isSidebarOpen ? 'closed' : ''}`}>
+      <aside className={`sidebar glass-panel no-print ${!isSidebarOpen ? 'closed' : ''}`}>
         <div className="sidebar-header" style={{ padding: '24px 16px' }}>
           <img src={logoImg} alt="Agro-Servicios Logo" style={{ width: '45px', borderRadius: '8px' }} />
           <h2 style={{ fontSize: '18px' }}>AGRO-SERVICIOS</h2>
@@ -101,7 +110,7 @@ export default function Layout() {
 
       {/* Main Content */}
       <main className="main-content">
-        <header className="topbar glass-panel">
+        <header className="topbar glass-panel no-print">
           <div className="topbar-left">
             <button className="btn-icon" onClick={toggleSidebar}><Menu size={20} /></button>
             <h2 className="page-title">
@@ -120,7 +129,7 @@ export default function Layout() {
         </header>
 
         <div className="content-area">
-          <Outlet context={{ user }} />
+          <Outlet context={{ user, isSidebarOpen, closeSidebar: () => setIsSidebarOpen(false), toggleSidebar }} />
         </div>
       </main>
     </div>
